@@ -1,407 +1,230 @@
-# Copyright (C) 2012-2021  CEA/DEN, EDF R&D, OPEN CASCADE
-#
-# This library is free software; you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either
-# version 2.1 of the License, or (at your option) any later version.
-#
-# This library is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# Lesser General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public
-# License along with this library; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
-#
-# See http://www.salome-platform.org/ or email : webmaster.salome@opencascade.com
-#
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8.8 FATAL_ERROR)
-INCLUDE(CMakeDependentOption)
+# --------------------------------------------------------------------------- #
+# SMESH
+# --------------------------------------------------------------------------- #
+set(SMESH_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-# Project name
-# ============
-# original
-PROJECT(SalomeSMESH C CXX)
-# upper case
-STRING(TOUPPER ${PROJECT_NAME} PROJECT_NAME_UC)
-
-# Common CMake macros
-# ===================
-SET(CONFIGURATION_ROOT_DIR $ENV{CONFIGURATION_ROOT_DIR} CACHE PATH "Path to the Salome CMake configuration files")
-IF(EXISTS ${CONFIGURATION_ROOT_DIR})
-  LIST(APPEND CMAKE_MODULE_PATH "${CONFIGURATION_ROOT_DIR}/cmake")
-  INCLUDE(SalomeMacros NO_POLICY_SCOPE)
-ELSE()
-  MESSAGE(FATAL_ERROR "We absolutely need the Salome CMake configuration files, please define CONFIGURATION_ROOT_DIR !")
-ENDIF()
-
-# Versioning
-# ===========
-SALOME_SETUP_VERSION(9.8.0 DEVELOPMENT)
-MESSAGE(STATUS "Building ${PROJECT_NAME_UC} ${${PROJECT_NAME_UC}_VERSION} from \"${${PROJECT_NAME_UC}_GIT_SHA1}\"")
-
-# Find KERNEL
-# ===========
-SET(KERNEL_ROOT_DIR $ENV{KERNEL_ROOT_DIR} CACHE PATH "Path to the Salome KERNEL")
-IF(EXISTS ${KERNEL_ROOT_DIR})
-  FIND_PACKAGE(SalomeKERNEL REQUIRED)
-  KERNEL_WITH_CORBA() #check whether KERNEL built with CORBA
-  ADD_DEFINITIONS(${KERNEL_DEFINITIONS})
-  INCLUDE_DIRECTORIES(${KERNEL_INCLUDE_DIRS})
-ELSE(EXISTS ${KERNEL_ROOT_DIR})
-  MESSAGE(FATAL_ERROR "We absolutely need a Salome KERNEL, please define KERNEL_ROOT_DIR")
-ENDIF(EXISTS ${KERNEL_ROOT_DIR})
-
-# Platform setup
-# ==============
-INCLUDE(SalomeSetupPlatform)   # From KERNEL
-# Always build libraries as shared objects:
-SET(BUILD_SHARED_LIBS TRUE)
-
-# User options
-# ============
-OPTION(SALOME_BUILD_TESTS "Build SALOME tests" ON)
-OPTION(SALOME_BUILD_DOC "Generate SALOME SMESH documentation" ON)
-
-# Advanced options:
-OPTION(SALOME_BUILD_GUI           "Enable GUI" ON)
-OPTION(SALOME_SMESH_USE_CGNS      "Enable import/export to CGNS format" OFF)
-OPTION(SALOME_SMESH_USE_TBB       "Enable parallel computation" OFF)
-OPTION(SALOME_SMESH_DYNLOAD_LOCAL "Load plug-ins' symbols locally (Linux only)" ON)
-OPTION(SMESH_USE_MESHGEMS_HYPOSET "Prefer MeshGems algorithms in sets of hypotheses" OFF)
-CMAKE_DEPENDENT_OPTION(SALOME_SMESH_BUILD_FRENCH_DOC "Generate SALOME SMESH French documentation" OFF
-                       "SALOME_BUILD_DOC" OFF)
-
-IF(SALOME_SMESH_DYNLOAD_LOCAL)
-  ADD_DEFINITIONS(-DDYNLOAD_LOCAL)
-ENDIF(SALOME_SMESH_DYNLOAD_LOCAL)
-
-IF(SALOME_USE_64BIT_IDS)
-   SET(SMESH_ID_TYPE "long long")
-ELSE()
-   SET(SMESH_ID_TYPE "long")
-ENDIF()
-
-IF(SMESH_USE_MESHGEMS_HYPOSET)
-  SET(SMESH_USE_MESHGEMS_HYPOSET_VAR "true")
-ELSE(SMESH_USE_MESHGEMS_HYPOSET)
-  SET(SMESH_USE_MESHGEMS_HYPOSET_VAR "false")
-ENDIF(SMESH_USE_MESHGEMS_HYPOSET)
-
-#On Linux use Fortran to compile MEFISTO2D
-IF(NOT WIN32)
-  ENABLE_LANGUAGE(Fortran)
-  SET(SALOME_SMESH_ENABLE_MEFISTO ON)
-  ADD_DEFINITIONS(-DENABLE_MEFISTO)
-ENDIF(NOT WIN32)
-
-MARK_AS_ADVANCED(SALOME_BUILD_GUI SALOME_SMESH_USE_CGNS SALOME_SMESH_USE_TBB SALOME_SMESH_DYNLOAD_LOCAL SMESH_USE_MESHGEMS_HYPOSET)
-
-# Prerequisites
-# =============
-# Find "big" prerequisites first - they reference themselves many others
-#   -> this can help finding the smaller prerequisites and detect conflicts.
-# In our case KERNEL has already loaded many prereq:
-
-##
-## From KERNEL:
-##
-
-# Various
-# Python
-FIND_PACKAGE(SalomePythonInterp REQUIRED)
-FIND_PACKAGE(SalomePythonLibs REQUIRED)
-# PThread
-FIND_PACKAGE(SalomePThread REQUIRED)
-# SWIG
-FIND_PACKAGE(SalomeSWIG REQUIRED)
-# Boost
-FIND_PACKAGE(SalomeBoost REQUIRED)
-# CORBA
-FIND_PACKAGE(SalomeOmniORB REQUIRED)
-FIND_PACKAGE(SalomeOmniORBPy REQUIRED)
-# LibXml2
-FIND_PACKAGE(SalomeLibXml2 REQUIRED)
-# HDF5
-FIND_PACKAGE(SalomeHDF5 REQUIRED COMPONENTS C)
-
-# Other KERNEL optionals:
-IF(SALOME_BUILD_TESTS)
-  ENABLE_TESTING()
-  FIND_PACKAGE(SalomeCppUnit)
-  SALOME_LOG_OPTIONAL_PACKAGE(CppUnit SALOME_BUILD_TESTS)
-ENDIF()
-IF(SALOME_BUILD_DOC)
-  FIND_PACKAGE(SalomeDoxygen)
-  FIND_PACKAGE(SalomeSphinx)
-  INCLUDE(UseSphinx)
-  SPHINX_CHECK_EXTENSIONS(sphinx_rtd_theme)
-  IF(SPHINX_VERSION VERSION_LESS "1.3")
-    SPHINX_CHECK_EXTENSIONS(sphinxcontrib.napoleon)
-  ENDIF()
-  SALOME_LOG_OPTIONAL_PACKAGE(Doxygen SALOME_BUILD_DOC)
-  SALOME_LOG_OPTIONAL_PACKAGE(Sphinx SALOME_BUILD_DOC)
-ENDIF()
-
-# Find GUI
-IF(SALOME_BUILD_GUI)
-  SET(GUI_ROOT_DIR $ENV{GUI_ROOT_DIR} CACHE PATH "Path to the Salome GUI")
-  IF(EXISTS ${GUI_ROOT_DIR})
-    FIND_PACKAGE(SalomeGUI)
-    SALOME_GUI_WITH_CORBA() #check whether GUI built with CORBA
-    SALOME_GUI_MODE(SALOME_USE_VTKVIEWER SALOME_USE_SALOMEOBJECT
-                    OPTIONAL SALOME_USE_PLOT2DVIEWER SALOME_USE_PYCONSOLE)
-    ##
-    ## Prerequisites From GUI:
-    ##
-    # Qt
-    FIND_PACKAGE(SalomeQt5 REQUIRED)
-    # SIP
-    FIND_PACKAGE(SalomeSIP REQUIRED)  # should come after Python and before PyQt5
-    # PyQt
-    FIND_PACKAGE(SalomePyQt5 REQUIRED)
-    # Qwt
-    FIND_PACKAGE(SalomeQwt REQUIRED)
-  ELSE(EXISTS ${GUI_ROOT_DIR})
-    MESSAGE(FATAL_ERROR "GUI_ROOT_DIR is not well defined, SMESH will be built without GUI!!!")
-  ENDIF(EXISTS ${GUI_ROOT_DIR})
-  SALOME_LOG_OPTIONAL_PACKAGE(SalomeGUI SALOME_BUILD_GUI)
-ENDIF(SALOME_BUILD_GUI)
-
-# Find GEOM
-# ===========
-SET(GEOM_ROOT_DIR $ENV{GEOM_ROOT_DIR} CACHE PATH "Path to the Salome GEOM")
-IF(EXISTS ${GEOM_ROOT_DIR})
-  FIND_PACKAGE(SalomeGEOM REQUIRED)
-  ADD_DEFINITIONS(${GEOM_DEFINITIONS})
-  INCLUDE_DIRECTORIES(${GEOM_INCLUDE_DIRS})
-  IF(SALOME_BUILD_GUI)
-    IF(NOT SALOME_GEOM_BUILD_GUI)
-      MESSAGE(FATAL_ERROR "We absolutely need a Salome GEOM with GUI, please set SALOME_BUILD_GUI=ON in GEOM module")
-    ENDIF(NOT SALOME_GEOM_BUILD_GUI)
-  ENDIF(SALOME_BUILD_GUI)
-ELSE(EXISTS ${GEOM_ROOT_DIR})
-  MESSAGE(FATAL_ERROR "We absolutely need a Salome GEOM, please define GEOM_ROOT_DIR")
-ENDIF(EXISTS ${GEOM_ROOT_DIR})
-
-# Find SHAPERSTUDY
-# ================
-SET(WITH_SHAPER_STUDY OFF)
-SET(SHAPERSTUDY_ROOT_DIR $ENV{SHAPERSTUDY_ROOT_DIR} CACHE PATH "Path to the Salome SHAPERSTUDY")
-IF(EXISTS ${SHAPERSTUDY_ROOT_DIR})
-  FIND_PACKAGE(SalomeSHAPERSTUDY)
-  IF(SalomeSHAPERSTUDY_FOUND)
-    SET(WITH_SHAPER_STUDY ON)
-  ENDIF()
-ENDIF(EXISTS ${SHAPERSTUDY_ROOT_DIR})
-IF(NOT WITH_SHAPER_STUDY AND SALOME_BUILD_TESTS)
-  MESSAGE(WARNING "SHAPERSTUDY is not found; the corresponding tests will be omitted")
-ENDIF()
-
-# Find MEDCoupling
-# ================
-SET(MEDCOUPLING_ROOT_DIR $ENV{MEDCOUPLING_ROOT_DIR} CACHE PATH "Path to the MEDCoupling tool")
-IF(EXISTS ${MEDCOUPLING_ROOT_DIR})
-  FIND_PACKAGE(SalomeMEDCoupling REQUIRED)   # will reload HDF5, MEDFile, XDR, etc ...
-ELSE(EXISTS ${MEDCOUPLING_ROOT_DIR})
-  MESSAGE(FATAL_ERROR "We absolutely need the MEDCoupling tool, please define MEDCOUPLING_ROOT_DIR !")
-ENDIF(EXISTS ${MEDCOUPLING_ROOT_DIR})
-
-##
-## SMESH specifics
-##
-
-# VTK is obligatiry for the SMESH
-FIND_PACKAGE(SalomeVTK REQUIRED)
-
-FIND_PACKAGE(SalomeOpenCASCADE REQUIRED)
-
-IF(SALOME_SMESH_USE_CGNS)
-  FIND_PACKAGE(SalomeCGNS)
-  SALOME_LOG_OPTIONAL_PACKAGE(CGNS SALOME_SMESH_USE_CGNS)
-  ADD_DEFINITIONS(-DWITH_CGNS)
-ENDIF(SALOME_SMESH_USE_CGNS)
-
-IF(SALOME_SMESH_USE_TBB)
-  FIND_PACKAGE(SalomeTBB)
-  SALOME_LOG_OPTIONAL_PACKAGE(TBB SALOME_SMESH_USE_TBB)
-  ADD_DEFINITIONS(-DWITH_TBB)
-ENDIF(SALOME_SMESH_USE_TBB)
-
-FIND_PACKAGE(SalomeMEDFile REQUIRED)
-
-#On Windows use f2c to generate C MEFISTO2D code
-IF(WIN32)
-  SET(SALOME_SMESH_ENABLE_MEFISTO OFF)
-  FIND_PACKAGE(Salomef2c QUIET)
-  IF(${F2C_FOUND})
-    ADD_DEFINITIONS(-DENABLE_MEFISTO)
-    SET(SALOME_SMESH_ENABLE_MEFISTO ON)
-    MESSAGE(STATUS "Build MEFISTO2D mesher using Fortran to C generator")
-  ELSE(${F2C_FOUND})
-    MESSAGE(FATAL "Fortran to C generator is not found: MEFISTO2D mesher cannot be compiled! Please define F2C_ROOT_DIR !")
-  ENDIF(${F2C_FOUND})
-ENDIF(WIN32)
-
-
-SET (SALOME_SMESH_DISABLE_MG_ADAPT OFF)
-SET (SALOME_SMESH_DISABLE_HOMARD_ADAPT OFF)
-IF(WIN32)
-  # On Windows temporarily disable MG_ADAPT
-  SET (SALOME_SMESH_DISABLE_MG_ADAPT ON)
-  SET (SALOME_SMESH_DISABLE_HOMARD_ADAPT ON)
-ENDIF()
-IF(SALOME_SMESH_DISABLE_MG_ADAPT)
-  ADD_DEFINITIONS(-DDISABLE_MG_ADAPT)
-ENDIF()
-
-IF(SALOME_SMESH_DISABLE_HOMARD_ADAPT)
-  ADD_DEFINITIONS(-DDISABLE_HOMARD_ADAPT)
-ENDIF()
-
-
-IF(SALOME_SMESH_ENABLE_MEFISTO)
- SET(MEFISTO2D_NAME "MEFISTO_2D")
-ELSE(SALOME_SMESH_ENABLE_MEFISTO)
- SET(MEFISTO2D_NAME "NOT_FOUND")
-ENDIF(SALOME_SMESH_ENABLE_MEFISTO)
-
-# Detection summary:
-SALOME_PACKAGE_REPORT_AND_CHECK()
-
-# Directories
-# (default values taken from KERNEL)
-# ===========
-SET(SALOME_INSTALL_BINS "${SALOME_INSTALL_BINS}" CACHE PATH "Install path: SALOME binaries")
-SET(SALOME_INSTALL_LIBS "${SALOME_INSTALL_LIBS}" CACHE PATH "Install path: SALOME libs")
-SET(SALOME_INSTALL_IDLS "${SALOME_INSTALL_IDLS}" CACHE PATH "Install path: SALOME IDL files")
-SET(SALOME_INSTALL_HEADERS "${SALOME_INSTALL_HEADERS}" CACHE PATH "Install path: SALOME headers")
-SET(SALOME_INSTALL_SCRIPT_SCRIPTS "${SALOME_INSTALL_SCRIPT_SCRIPTS}" CACHE PATH
-   "Install path: SALOME scripts")
-SET(SALOME_INSTALL_SCRIPT_DATA "${SALOME_INSTALL_SCRIPT_DATA}" CACHE PATH
-   "Install path: SALOME script data")
-SET(SALOME_INSTALL_SCRIPT_PYTHON "${SALOME_INSTALL_SCRIPT_PYTHON}" CACHE PATH
-   "Install path: SALOME Python scripts")
-SET(SALOME_INSTALL_APPLISKEL_SCRIPTS "${SALOME_INSTALL_APPLISKEL_SCRIPTS}" CACHE PATH
-   "Install path: SALOME application skeleton - scripts")
-SET(SALOME_INSTALL_APPLISKEL_PYTHON "${SALOME_INSTALL_APPLISKEL_PYTHON}" CACHE PATH
-   "Install path: SALOME application skeleton - Python")
-SET(SALOME_INSTALL_PYTHON "${SALOME_INSTALL_PYTHON}" CACHE PATH "Install path: SALOME Python stuff")
-SET(SALOME_INSTALL_PYTHON_SHARED "${SALOME_INSTALL_PYTHON_SHARED}" CACHE PATH
-   "Install path: SALOME Python shared modules")
-SET(SALOME_INSTALL_CMAKE_LOCAL "${SALOME_INSTALL_CMAKE_LOCAL}" CACHE PATH
-    "Install path: local SALOME CMake files")
-SET(SALOME_INSTALL_AMCONFIG_LOCAL "${SALOME_INSTALL_AMCONFIG_LOCAL}" CACHE PATH
-  "Install path: local SALOME config files (obsolete, to be removed)")
-SET(SALOME_INSTALL_RES "${SALOME_INSTALL_RES}" CACHE PATH "Install path: SALOME resources")
-SET(SALOME_INSTALL_DOC "${SALOME_INSTALL_DOC}" CACHE PATH "Install path: SALOME documentation")
-
-# Specific to SMESH:
-SET(SALOME_SMESH_INSTALL_RES_DATA "${SALOME_INSTALL_RES}/smesh" CACHE PATH
-    "Install path: SALOME SMESH specific data")
-SET(SALOME_SMESH_INSTALL_PLUGINS share/salome/plugins/smesh CACHE PATH
-    "Install path: SALOME SMESH plugins")
-
-MARK_AS_ADVANCED(SALOME_INSTALL_BINS SALOME_INSTALL_LIBS SALOME_INSTALL_IDLS SALOME_INSTALL_HEADERS)
-MARK_AS_ADVANCED(SALOME_INSTALL_SCRIPT_SCRIPTS SALOME_INSTALL_SCRIPT_DATA SALOME_INSTALL_SCRIPT_PYTHON)
-MARK_AS_ADVANCED(SALOME_INSTALL_APPLISKEL_SCRIPTS  SALOME_INSTALL_APPLISKEL_PYTHON SALOME_INSTALL_CMAKE_LOCAL SALOME_INSTALL_RES)
-MARK_AS_ADVANCED(SALOME_INSTALL_PYTHON SALOME_INSTALL_PYTHON_SHARED)
-MARK_AS_ADVANCED(SALOME_INSTALL_AMCONFIG_LOCAL SALOME_INSTALL_DOC)
-MARK_AS_ADVANCED(SALOME_SMESH_INSTALL_RES_DATA SALOME_SMESH_INSTALL_PLUGINS)
-
-# Accumulate environment variables for SMESH module
-SALOME_ACCUMULATE_ENVIRONMENT(PYTHONPATH NOCHECK ${CMAKE_INSTALL_PREFIX}/${SALOME_INSTALL_BINS}
-                                                 ${CMAKE_INSTALL_PREFIX}/${SALOME_INSTALL_PYTHON}
-                                                 ${CMAKE_INSTALL_PREFIX}/${SALOME_INSTALL_PYTHON_SHARED})
-SALOME_ACCUMULATE_ENVIRONMENT(LD_LIBRARY_PATH NOCHECK ${CMAKE_INSTALL_PREFIX}/${SALOME_INSTALL_LIBS})
-
-# Sources
-# ========
-
-ADD_SUBDIRECTORY(idl)
-ADD_SUBDIRECTORY(adm_local)
-ADD_SUBDIRECTORY(resources)
-ADD_SUBDIRECTORY(bin)
-ADD_SUBDIRECTORY(src)
-IF(SALOME_BUILD_DOC)
-  ADD_SUBDIRECTORY(doc)
-ENDIF()
-IF(SALOME_BUILD_TESTS)
-  ADD_SUBDIRECTORY(test)
-ENDIF()
-
-# Header configuration
-# ====================
-SALOME_CONFIGURE_FILE(SMESH_version.h.in SMESH_version.h INSTALL ${SALOME_INSTALL_HEADERS})
-
-# Configuration export
-# (here only the level 1 prerequisites are exposed)
-# ====================
-INCLUDE(CMakePackageConfigHelpers)
-
-# List of targets in this project we want to make visible to the rest of the world.
-# They all have to be INSTALL'd with the option "EXPORT ${PROJECT_NAME}TargetGroup"
-SET(_${PROJECT_NAME}_exposed_targets
-  SMESHControls MeshDriver MeshDriverDAT MeshDriverGMF MeshDriverMED
-  MeshDriverSTL MeshDriverUNV MEDWrapper
-  SMDS SMESHimpl SMESHEngine SMESHClient SMESHDS
-  SMESHUtils StdMeshers StdMeshersEngine MeshJobManagerEngine
-  SPADDERPluginTesterEngine SalomeIDLSMESH SalomeIDLSPADDER
+# Driver
+file(GLOB Driver_SRC ${SMESH_SRC_DIR}/Driver/*.cxx)
+add_library(Driver ${Driver_SRC})
+target_link_libraries(Driver SMESHUtils TKernel TKTopAlgo)
+target_include_directories(Driver PUBLIC
+  $<BUILD_INTERFACE:${SMESH_SRC_DIR}/Driver>
+  $<INSTALL_INTERFACE:include/smesh/Driver>
 )
+if(WIN32)
+    set_target_properties(Driver PROPERTIES COMPILE_FLAGS "-DMESHDRIVER_EXPORTS")
+endif()
+set(SMESH_LIBRARIES ${SMESH_LIBRARIES} Driver)
+file(GLOB Driver_INCLUDES ${SMESH_SRC_DIR}/Driver/*.h*)
+install(FILES ${Driver_INCLUDES} DESTINATION "include/smesh/Driver")
 
-IF(SALOME_SMESH_ENABLE_MEFISTO)
-  LIST(APPEND _${PROJECT_NAME}_exposed_targets
-       MEFISTO2D)
-ENDIF(SALOME_SMESH_ENABLE_MEFISTO)
+# DriverDAT
+file(GLOB DriverDAT_SRC ${SMESH_SRC_DIR}/DriverDAT/*.cxx)
+add_library(DriverDAT ${DriverDAT_SRC})
+target_link_libraries(DriverDAT Driver SMDS)
+target_include_directories(DriverDAT PUBLIC
+  $<BUILD_INTERFACE:${SMESH_SRC_DIR}/DriverDAT>
+  $<INSTALL_INTERFACE:include/smesh/DriverDAT>
+)
+if(WIN32)
+    set_target_properties(DriverDAT PROPERTIES COMPILE_FLAGS "-DMESHDRIVERDAT_EXPORTS")
+endif()
+set(SMESH_LIBRARIES ${SMESH_LIBRARIES} DriverDAT)
+file(GLOB DriverDAT_INCLUDES ${SMESH_SRC_DIR}/DriverDAT/*.h*)
+install(FILES ${DriverDAT_INCLUDES} DESTINATION "include/smesh/DriverDAT")
 
-IF(SALOME_BUILD_GUI)
-  LIST(APPEND _${PROJECT_NAME}_exposed_targets
-      SMESHObject SMESHFiltersSelection SMESH PluginUtils StdMeshersGUI
-  )
-ENDIF(SALOME_BUILD_GUI)
+# DriverGMF
+file(GLOB DriverGMF_SRC ${SMESH_SRC_DIR}/DriverGMF/*.cxx ${SMESH_SRC_DIR}/DriverGMF/libmesh5.c)
+add_library(DriverGMF ${DriverGMF_SRC})
+target_link_libraries(DriverGMF SMESHUtils SMESHDS Driver)
+target_include_directories(DriverGMF PUBLIC
+  $<BUILD_INTERFACE:${SMESH_SRC_DIR}/DriverGMF>
+  $<INSTALL_INTERFACE:include/smesh/DriverGMF>
+)
+if(WIN32)
+    set_target_properties(DriverGMF PROPERTIES COMPILE_FLAGS "-DMESHDriverGMF_EXPORTS")
+endif()
+set(SMESH_LIBRARIES ${SMESH_LIBRARIES} DriverGMF)
+file(GLOB DriverGMF_INCLUDES ${SMESH_SRC_DIR}/DriverGMF/*.h*)
+install(FILES ${DriverGMF_INCLUDES} DESTINATION "include/smesh/DriverGMF")
 
-IF(SALOME_SMESH_USE_CGNS)
-  LIST(APPEND _${PROJECT_NAME}_exposed_targets
-    MeshDriverCGNS
-  )
-ENDIF(SALOME_SMESH_USE_CGNS)
+# DriverSTL
+file(GLOB DriverSTL_SRC ${SMESH_SRC_DIR}/DriverSTL/*.cxx)
+add_library(DriverSTL ${DriverSTL_SRC})
+target_link_libraries(DriverSTL Driver SMDS SMESHUtils TKernel TKSTL TKTopAlgo TKMesh)
+target_include_directories(DriverSTL PUBLIC
+  $<BUILD_INTERFACE:${SMESH_SRC_DIR}/DriverSTL>
+  $<INSTALL_INTERFACE:include/smesh/DriverSTL>
+)
+if(WIN32)
+    set_target_properties(DriverSTL PROPERTIES COMPILE_FLAGS "-DMESHDRIVERSTL_EXPORTS")
+endif()
+set(SMESH_LIBRARIES ${SMESH_LIBRARIES} DriverSTL)
+file(GLOB DriverSTL_INCLUDES ${SMESH_SRC_DIR}/DriverSTL/*.h*)
+install(FILES ${DriverSTL_INCLUDES} DESTINATION "include/smesh/DriverSTL")
 
-# Add all targets to the build-tree export set
-EXPORT(TARGETS ${_${PROJECT_NAME}_exposed_targets}
-  FILE ${PROJECT_BINARY_DIR}/${PROJECT_NAME}Targets.cmake)
+# DriverUNV
+file(GLOB DriverUNV_SRC ${SMESH_SRC_DIR}/DriverUNV/*.cxx)
+add_library(DriverUNV ${DriverUNV_SRC})
+target_link_libraries(DriverUNV SMDS SMESHDS Driver)
+target_include_directories(DriverUNV PUBLIC
+  $<BUILD_INTERFACE:${SMESH_SRC_DIR}/DriverUNV>
+  $<INSTALL_INTERFACE:include/smesh/DriverUNV>
+)
+if(WIN32)
+    set_target_properties(DriverUNV PROPERTIES COMPILE_FLAGS "-DMESHDRIVERUNV_EXPORTS")
+endif()
+set(SMESH_LIBRARIES ${SMESH_LIBRARIES} DriverUNV)
+file(GLOB DriverUNV_INCLUDES ${SMESH_SRC_DIR}/DriverUNV/*.h*)
+install(FILES ${DriverUNV_INCLUDES} DESTINATION "include/smesh/DriverUNV")
 
-# Create the configuration files:
-#   - in the build tree:
+# MEFISTO2
+file(GLOB MEFISTO2_SRC ${SMESH_SRC_DIR}/MEFISTO2/aptrte.cxx ${SMESH_SRC_DIR}/MEFISTO2/trte.c)
+add_library(MEFISTO2 ${MEFISTO2_SRC})
+target_link_libraries(MEFISTO2 Kernel)
+target_include_directories(MEFISTO2 PUBLIC
+  $<BUILD_INTERFACE:${SMESH_SRC_DIR}/MEFISTO2>
+  $<INSTALL_INTERFACE:include/smesh/MEFISTO2>
+)
+if (WIN32)
+    set_target_properties(MEFISTO2 PROPERTIES COMPILE_FLAGS "-DMEFISTO2D_EXPORTS")
+endif()
+set(SMESH_LIBRARIES ${SMESH_LIBRARIES} MEFISTO2)
+file(GLOB MEFISTO2_INCLUDES ${SMESH_SRC_DIR}/MEFISTO2/*.h*)
+install(FILES ${MEFISTO2_INCLUDES} DESTINATION "include/smesh/MEFISTO2")
 
-# Ensure the variables are always defined for the configure:
-SET(GEOM_ROOT_DIR "${GEOM_ROOT_DIR}")
-SET(MEDCOUPLING_ROOT_DIR "${MEDCOUPLING_ROOT_DIR}")
-SET(MEDFILE_ROOT_DIR "${MEDFILE_ROOT_DIR}")
-SET(CGNS_ROOT_DIR "${CGNS_ROOT_DIR}")
-SET(TBB_ROOT_DIR  "${TBB_ROOT_DIR}")
+# Controls
+file(GLOB Controls_SRC ${SMESH_SRC_DIR}/Controls/*.cxx)
+add_library(Controls ${Controls_SRC})
+target_link_libraries(Controls Kernel Geom SMDS SMESHDS SMESHUtils TKernel TKBRep TKG3d TKTopAlgo TKGeomBase TKGeomAlgo VTK::FiltersVerdict)
+target_include_directories(Controls PUBLIC
+  $<BUILD_INTERFACE:${SMESH_SRC_DIR}/Controls>
+  $<INSTALL_INTERFACE:include/smesh/Controls>
+)
+if(WIN32)
+    set_target_properties(Controls PROPERTIES COMPILE_FLAGS "-DSMESHCONTROLS_EXPORTS")
+endif()
+set(SMESH_LIBRARIES ${SMESH_LIBRARIES} Controls)
+file(GLOB Controls_INCLUDES ${SMESH_SRC_DIR}/Controls/*.h*)
+install(FILES ${Controls_INCLUDES} DESTINATION "include/smesh/Controls")
 
-SET(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/include" "${PROJECT_BINARY_DIR}/include")
+# SMDS
+file(GLOB SMDS_SRC ${SMESH_SRC_DIR}/SMDS/*.cxx)
+add_library(SMDS ${SMDS_SRC})
+target_link_libraries(SMDS Kernel VTK::CommonCore VTK::CommonDataModel)
+target_include_directories(SMDS PUBLIC
+  $<BUILD_INTERFACE:${SMESH_SRC_DIR}/SMDS>
+  $<INSTALL_INTERFACE:include/smesh/SMDS>
+)
+if(WIN32)
+    set_target_properties(SMDS PROPERTIES COMPILE_FLAGS "-DSMDS_EXPORTS")
+endif()
+set(SMESH_LIBRARIES ${SMESH_LIBRARIES} SMDS)
+file(GLOB SMDS_INCLUDES ${SMESH_SRC_DIR}/SMDS/*.h*)
+install(FILES ${SMDS_INCLUDES} DESTINATION "include/smesh/SMDS")
 
-# Build variables that will be expanded when configuring Salome<MODULE>Config.cmake:
-SALOME_CONFIGURE_PREPARE(MEDCoupling CGNS TBB MEDFile)
+# SMESH
+file(GLOB SMESH_SRC ${SMESH_SRC_DIR}/SMESH/*.cxx)
+list(REMOVE_ITEM SMESH_SRC "${SMESH_SRC_DIR}/SMESH/MG_ADAPT.cxx")
+add_library(SMESH ${SMESH_SRC})
+target_link_libraries(SMESH Kernel Geom Controls SMESHDS Driver DriverDAT DriverSTL DriverUNV DriverGMF TKShHealing TKPrim TKG2d TKCDF TKMeshVS ${Boost_LIBRARIES})
+target_include_directories(SMESH PUBLIC
+  $<BUILD_INTERFACE:${SMESH_SRC_DIR}/SMESH>
+  $<INSTALL_INTERFACE:include/smesh/SMESH>
+)
+if(WIN32)
+    set_target_properties(SMESH PROPERTIES COMPILE_FLAGS "-DSMESHimpl_EXPORTS")
+endif()
+set(SMESH_LIBRARIES ${SMESH_LIBRARIES} SMESH)
+file(GLOB SMESH_INCLUDES ${SMESH_SRC_DIR}/SMESH/*.h*)
+install(FILES ${SMESH_INCLUDES} DESTINATION "include/smesh/SMESH")
 
-CONFIGURE_PACKAGE_CONFIG_FILE(${PROJECT_NAME}Config.cmake.in
-    ${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-    INSTALL_DESTINATION "${SALOME_INSTALL_CMAKE_LOCAL}"
-    PATH_VARS CONF_INCLUDE_DIRS SALOME_INSTALL_CMAKE_LOCAL CMAKE_INSTALL_PREFIX
-    GEOM_ROOT_DIR MEDCOUPLING_ROOT_DIR MEDFILE_ROOT_DIR CGNS_ROOT_DIR TBB_ROOT_DIR)
+# SMESHDS
+file(GLOB SMESHDS_SRC ${SMESH_SRC_DIR}/SMESHDS/*.cxx)
+add_library(SMESHDS ${SMESHDS_SRC})
+target_link_libraries(SMESHDS SMDS Kernel TKBRep)
+target_include_directories(SMESHDS PUBLIC
+  $<BUILD_INTERFACE:${SMESH_SRC_DIR}/SMESHDS>
+  $<INSTALL_INTERFACE:include/smesh/SMESHDS>
+)
+if(WIN32)
+    set_target_properties(SMESHDS PROPERTIES COMPILE_FLAGS "-DSMESHDS_EXPORTS")
+endif()
+set(SMESH_LIBRARIES ${SMESH_LIBRARIES} SMESHDS)
+file(GLOB SMESHDS_INCLUDES ${SMESH_SRC_DIR}/SMESHDS/*.h*)
+install(FILES ${SMESHDS_INCLUDES} DESTINATION "include/smesh/SMESHDS")
 
-WRITE_BASIC_PACKAGE_VERSION_FILE(${PROJECT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
-    VERSION ${${PROJECT_NAME_UC}_VERSION}
-    COMPATIBILITY AnyNewerVersion)
+# StdMeshers
+file(GLOB StdMeshers_SRC ${SMESH_SRC_DIR}/StdMeshers/*.cxx)
+add_library(StdMeshers ${StdMeshers_SRC})
+target_link_libraries(StdMeshers SMESH MEFISTO2 TKOffset ${Boost_LIBRARIES})
+target_include_directories(StdMeshers PUBLIC
+  $<BUILD_INTERFACE:${SMESH_SRC_DIR}/StdMeshers>
+  $<INSTALL_INTERFACE:include/smesh/StdMeshers>
+)
+if(WIN32)
+    set_target_properties(StdMeshers PROPERTIES COMPILE_FLAGS "-DSTDMESHERS_EXPORTS")
+endif()
+set(SMESH_LIBRARIES ${SMESH_LIBRARIES} StdMeshers)
+file(GLOB StdMeshers_INCLUDES ${SMESH_SRC_DIR}/StdMeshers/*.h*)
+install(FILES ${StdMeshers_INCLUDES} DESTINATION "include/smesh/StdMeshers")
 
-# Install the CMake configuration files:
-INSTALL(FILES
-  "${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-  "${PROJECT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-  DESTINATION "${SALOME_INSTALL_CMAKE_LOCAL}")
+# SMESHUtils
+file(GLOB SMESHUtils_SRC ${SMESH_SRC_DIR}/SMESHUtils/*.cxx)
+add_library(SMESHUtils ${SMESHUtils_SRC})
+target_link_libraries(SMESHUtils SMDS TKShHealing TKPrim TKernel TKBRep TKG2d TKG3d TKGeomBase TKGeomAlgo TKTopAlgo TKMesh ${Boost_LIBRARIES})
+target_include_directories(SMESHUtils PUBLIC
+  $<BUILD_INTERFACE:${SMESH_SRC_DIR}/SMESHUtils>
+  $<INSTALL_INTERFACE:include/smesh/SMESHUtils>
+)
+if(WIN32)
+    set_target_properties(SMESHUtils PROPERTIES COMPILE_FLAGS "-DSMESHUtils_EXPORTS")
+endif()
+set(SMESH_LIBRARIES ${SMESH_LIBRARIES} SMESHUtils)
+file(GLOB SMESHUtils_INCLUDES ${SMESH_SRC_DIR}/SMESHUtils/*.h*)
+install(FILES ${SMESHUtils_INCLUDES} DESTINATION "include/smesh/SMESHUtils")
 
-# Install the export set for use with the install-tree
-INSTALL(EXPORT ${PROJECT_NAME}TargetGroup DESTINATION "${SALOME_INSTALL_CMAKE_LOCAL}"
-  FILE ${PROJECT_NAME}Targets.cmake)
+# NETGENPlugin
+if(ENABLE_NETGEN)
+    set(NETGENPlugin_SRC_DIR ${SMESH_SRC_DIR}/NETGENPlugin/src/NETGENPlugin)
+
+    # Get sources and remove unsupported ones
+    file(GLOB NETGENPlugin_SRC ${NETGENPlugin_SRC_DIR}/*.cxx)
+    file(GLOB NETGENPlugin_Remesher_2D_SRC ${NETGENPlugin_SRC_DIR}/*Remesher_2D.cxx)
+    list(REMOVE_ITEM NETGENPlugin_SRC ${NETGENPlugin_Remesher_2D_SRC})
+    file(GLOB NETGENPlugin_SRC_i ${NETGENPlugin_SRC_DIR}/*_i.cxx)
+    list(REMOVE_ITEM NETGENPlugin_SRC ${NETGENPlugin_SRC_i})
+
+    add_library(NETGENPlugin ${NETGENPlugin_SRC})
+    target_link_libraries(NETGENPlugin StdMeshers nglib4smesh)
+    target_include_directories(NETGENPlugin PUBLIC
+      $<BUILD_INTERFACE:${NETGENPlugin_SRC_DIR}>
+      $<INSTALL_INTERFACE:include/smesh/NETGENPlugin>
+    )
+    if(WIN32)
+        set_target_properties(NETGENPlugin PROPERTIES COMPILE_FLAGS "-DNETGENPLUGIN_EXPORTS -DNO_PARALLEL_THREADS -DOCCGEOMETRY -DNETGEN_V5")
+    else()
+        set_target_properties(NETGENPlugin PROPERTIES COMPILE_FLAGS "${NETGEN_CXX_FLAGS} -DNO_PARALLEL_THREADS -DOCCGEOMETRY -DNETGEN_V5")
+    endif()
+    set(SMESH_LIBRARIES ${SMESH_LIBRARIES} NETGENPlugin)
+    file(GLOB NETGENPlugin_INCLUDES ${NETGENPlugin_SRC_DIR}/*.h*)
+    install(FILES ${NETGENPlugin_INCLUDES} DESTINATION "include/smesh/NETGENPlugin")
+endif(ENABLE_NETGEN)
+
+# MeshVSLink
+file(GLOB MeshVSLink_SRC ${SMESH_SRC_DIR}/MeshVSLink/*.cxx)
+add_library(MeshVSLink ${MeshVSLink_SRC})
+target_link_libraries(MeshVSLink SMDS SMESHDS SMESH TKMeshVS)
+target_include_directories(MeshVSLink PUBLIC
+  $<BUILD_INTERFACE:${SMESH_SRC_DIR}/MeshVSLink>
+  $<INSTALL_INTERFACE:include/smesh/MeshVSLink>
+)
+if(WIN32)
+    set_target_properties(MeshVSLink PROPERTIES COMPILE_FLAGS "-DSMESHimpl_EXPORTS")
+endif(WIN32)
+set(SMESH_LIBRARIES ${SMESH_LIBRARIES} MeshVSLink)
+file(GLOB MeshVSLink_INCLUDES ${SMESH_SRC_DIR}/MeshVSLink/*.hxx
+  ${SMESH_SRC_DIR}/MeshVSLink/*.ixx
+  ${SMESH_SRC_DIR}/MeshVSLink/*.jxx
+)
+install(FILES ${MeshVSLink_INCLUDES} DESTINATION "include/smesh/MeshVSLink")
