@@ -26,6 +26,9 @@
 
 #include "SMESH_SMDS.hxx"
 
+ // Fix for https://discourse.vtk.org/t/compilation-error-include-limits-required-in-several-files/6496
+#include <limits>
+
 #include <vtkUnstructuredGrid.h>
 #include <vtkCellLinks.h>
 #include <smIdType.hxx>

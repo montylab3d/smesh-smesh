@@ -26,6 +26,7 @@
 #define _SMDS_ElementFactory_HeaderFile
 
 #include "SMDS_MeshCell.hxx"
+#include "SMDS_MeshNode.hxx"
 #include "SMDS_Position.hxx"
 
 #include <Utils_SALOME_Exception.hxx>
@@ -373,7 +374,10 @@ typedef double                     TParam;
 class SMDS_ElementChunk
 {
   SMDS_ElementFactory* myFactory;     // holder of this chunk
-  SMDS_MeshElement*    myElements;    // array of elements
+  // SMDS_MeshElement*    myElements;    // array of elements
+  std::vector<SMDS_MeshNode> myNodeElements; // array of node elements
+  std::vector<SMDS_MeshCell> myCellElements; // array of cell elements
+
   smIdType             my1stID;       // ID of myElements[0]
   TBitSet              myMarkedSet;   // mark some elements
   TUsedRangeSet        myUsedRanges;  // ranges of used/unused elements
@@ -389,10 +393,25 @@ public:
   ~SMDS_ElementChunk();
 
   //! Return an element by an index [0,ChunkSize()]
-  SMDS_MeshElement* Element(int index) { return & myElements[index]; }
+  // SMDS_MeshElement* Element(int index) { return & myElements[index]; }
+  SMDS_MeshElement* Element(int index)
+  {
+    if (!myNodeElements.empty())
+      return &myNodeElements[index];
+    else
+      return &myCellElements[index];
+  }
 
   //! Return an element by an index [0,ChunkSize()]
-  const SMDS_MeshElement* Element(int index) const { return & myElements[index]; }
+  // const SMDS_MeshElement* Element(int index) const { return & myElements[index]; }
+  const SMDS_MeshElement* Element(int index) const
+  {
+    if (!myNodeElements.empty())
+      return &myNodeElements[index];
+    else
+      return &myCellElements[index];
+  }
+
 
   //! Return ID of the first non-used element
   smIdType  GetUnusedID() const;
@@ -407,7 +426,14 @@ public:
   static bool IsUsed( const _UsedRange& r ) { return r.myValue; }
 
   //! Return index of an element in the chunk
-  int Index( const SMDS_MeshElement* e ) const { return (int)( e - myElements ); }
+  // int Index( const SMDS_MeshElement* e ) const { return (int)( e - myElements ); }
+  int Index( const SMDS_MeshElement* e ) const
+  {
+    if (!myNodeElements.empty())
+      return (int)( static_cast<const SMDS_MeshNode*>(e) - myNodeElements.data() );
+    else
+      return (int)( static_cast<const SMDS_MeshCell*>(e) - myCellElements.data() );
+  }
 
   //! Return ID of the 1st element in the chunk
   smIdType Get1stID() const { return my1stID; }

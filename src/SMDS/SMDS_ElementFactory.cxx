@@ -536,9 +536,9 @@ SMDS_ElementChunk::SMDS_ElementChunk( SMDS_ElementFactory* factory, smIdType id0
   if ( !myFactory )
     return;
   if ( myFactory->myIsNodal )
-    myElements = new SMDS_MeshNode[ theChunkSize ];
+    myNodeElements.resize(theChunkSize);
   else
-    myElements = new SMDS_MeshCell[ theChunkSize ];
+    myCellElements.resize(theChunkSize);
 
   myUsedRanges.mySet.reserve(2);
   mySubIDRanges.mySet.insert( _ShapeIDRange( 0, 0 ));
@@ -554,7 +554,7 @@ SMDS_ElementChunk::SMDS_ElementChunk( SMDS_ElementFactory* factory, smIdType id0
 
 SMDS_ElementChunk::~SMDS_ElementChunk()
 {
-  delete [] myElements;
+  // delete [] myElements;
   myFactory->myChunksWithUnused.erase( this );
 }
 
