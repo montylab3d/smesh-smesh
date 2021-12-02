@@ -4349,6 +4349,9 @@ struct ElementsOnShape::Classifier
 {
   Classifier() { mySolidClfr = 0; myFlags = 0; }
   ~Classifier();
+  Classifier(const Classifier &) = delete;
+  Classifier(Classifier &&);
+
   void Init(const TopoDS_Shape& s, double tol, const Bnd_B3d* box = 0 );
   bool IsOut(const gp_Pnt& p)        { return SetChecked( true ), (this->*myIsOutFun)( p ); }
   TopAbs_ShapeEnum ShapeType() const { return myShape.ShapeType(); }
@@ -4798,6 +4801,10 @@ void ElementsOnShape::Classifier::Init( const TopoDS_Shape& theShape,
       myBox.SetHSize( halfSize );
     }
   }
+}
+
+ElementsOnShape::Classifier::Classifier(Classifier &&dummy){
+  // Not a real copy constructor
 }
 
 ElementsOnShape::Classifier::~Classifier()
