@@ -27,18 +27,20 @@
 #include "SMDS_Mesh.hxx"
 #include "SMDS_MeshGroup.hxx"
 
-#include <IntAna_IntConicQuad.hxx>
-#include <IntAna_Quadric.hxx>
 #include <NCollection_DataMap.hxx>
 #include <NCollection_Map.hxx>
 #include <Precision.hxx>
 #include <gp_Ax1.hxx>
+#include <gp_Cone.hxx>
 #include <gp_Cylinder.hxx>
+#include <gp_Sphere.hxx>
 #include <gp_Dir.hxx>
 #include <gp_Lin.hxx>
 #include <gp_Pln.hxx>
 #include <gp_Pnt.hxx>
 #include <gp_Vec.hxx>
+#include <IntAna_IntConicQuad.hxx>
+#include <IntAna_Quadric.hxx>
 
 #include <Utils_SALOME_Exception.hxx>
 
