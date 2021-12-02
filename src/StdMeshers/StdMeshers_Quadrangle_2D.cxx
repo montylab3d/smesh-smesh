@@ -52,6 +52,7 @@
 #include <NCollection_DefineArray2.hxx>
 #include <Precision.hxx>
 #include <ShapeAnalysis.hxx>
+#include <Standard_Version.hxx>
 #include <TColStd_SequenceOfInteger.hxx>
 #include <TColStd_SequenceOfReal.hxx>
 #include <TColgp_SequenceOfXY.hxx>
