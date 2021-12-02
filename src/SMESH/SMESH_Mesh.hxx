@@ -41,7 +41,7 @@
 #include <TopTools_IndexedDataMapOfShapeListOfShape.hxx>
 #include <TopTools_ListOfShape.hxx>
 
-#include "MEDCouplingMemArray.hxx"
+//#include "MEDCouplingMemArray.hxx"
 
 #include <map>
 #include <list>
@@ -265,14 +265,14 @@ class SMESH_EXPORT SMESH_Mesh
     TooLargeForExport(const char* format):runtime_error(format) {}
   };
 
-  MEDCoupling::MCAuto<MEDCoupling::DataArrayByte>
-    ExportMEDCoupling(const char*         theMeshName = NULL,
-                      bool                theAutoGroups = true,
-                      const SMESHDS_Mesh* theMeshPart = 0,
-                      bool                theAutoDimension = false,
-                      bool                theAddODOnVertices = false,
-                      double              theZTolerance = -1.,
-                      bool                theSaveNumbers = true);
+  //  MEDCoupling::MCAuto<MEDCoupling::DataArrayByte>
+  //    ExportMEDCoupling(const char*         theMeshName = NULL,
+  //                      bool                theAutoGroups = true,
+  //                      const SMESHDS_Mesh* theMeshPart = 0,
+  //                      bool                theAutoDimension = false,
+  //                      bool                theAddODOnVertices = false,
+  //                      double              theZTolerance = -1.,
+  //                      bool                theSaveNumbers = true);
 
   void ExportMED(const char *        theFile,
                  const char*         theMeshName = NULL,

@@ -44,8 +44,8 @@
 #include "DriverDAT_W_SMDS_Mesh.h"
 #include "DriverGMF_Read.hxx"
 #include "DriverGMF_Write.hxx"
-#include "DriverMED_R_SMESHDS_Mesh.h"
-#include "DriverMED_W_SMESHDS_Mesh.h"
+//#include "DriverMED_R_SMESHDS_Mesh.h"
+//#include "DriverMED_W_SMESHDS_Mesh.h"
 #include "DriverSTL_R_SMDS_Mesh.h"
 #include "DriverSTL_W_SMDS_Mesh.h"
 #include "DriverUNV_R_SMDS_Mesh.h"
@@ -57,7 +57,7 @@
 
 #include <GEOMUtils.hxx>
 
-#undef _Precision_HeaderFile
+//#undef _Precision_HeaderFile
 #include <BRepBndLib.hxx>
 #include <BRepPrimAPI_MakeBox.hxx>
 #include <Bnd_Box.hxx>
@@ -513,6 +513,7 @@ int SMESH_Mesh::UNVToMesh(const char* theFileName)
   return 1;
 }
 
+#if USE_MED
 //=======================================================================
 //function : MEDToMesh
 //purpose  :
@@ -555,6 +556,7 @@ int SMESH_Mesh::MEDToMesh(const char* theFileName, const char* theMeshName)
 
   return (int) status;
 }
+#endif
 
 //=======================================================================
 //function : STLToMesh
@@ -1380,6 +1382,7 @@ bool SMESH_Mesh::IsComputedOK()
   return true;
 }
 
+#if USE_MED
 //================================================================================
 /*!
  * \brief Check if any groups of the same type have equal names
@@ -1485,20 +1488,20 @@ void SMESH_Mesh::exportMEDCommmon(DriverMED_W_SMESHDS_Mesh& theWriter,
  */
 //================================================================================
 
-MEDCoupling::MCAuto<MEDCoupling::DataArrayByte>
-SMESH_Mesh::ExportMEDCoupling(const char*         theMeshName,
-                              bool                theAutoGroups,
-                              const SMESHDS_Mesh* theMeshPart,
-                              bool                theAutoDimension,
-                              bool                theAddODOnVertices,
-                              double              theZTolerance,
-                              bool                theSaveNumbers)
-{
-  DriverMED_W_SMESHDS_Mesh_Mem writer;
-  this->exportMEDCommmon( writer, theMeshName, theAutoGroups, theMeshPart, theAutoDimension,
-                          theAddODOnVertices, theZTolerance, theSaveNumbers);
-  return writer.getData();
-}
+//MEDCoupling::MCAuto<MEDCoupling::DataArrayByte>
+//SMESH_Mesh::ExportMEDCoupling(const char*         theMeshName,
+//                              bool                theAutoGroups,
+//                              const SMESHDS_Mesh* theMeshPart,
+//                              bool                theAutoDimension,
+//                              bool                theAddODOnVertices,
+//                              double              theZTolerance,
+//                              bool                theSaveNumbers)
+//{
+//  DriverMED_W_SMESHDS_Mesh_Mem writer;
+//  this->exportMEDCommmon( writer, theMeshName, theAutoGroups, theMeshPart, the//AutoDimension,
+//                          theAddODOnVertices, theZTolerance, theSaveNumbers);
+//  return writer.getData();
+//}
 
 //================================================================================
 /*!
@@ -1540,6 +1543,7 @@ void SMESH_Mesh::ExportMED(const char *        theFile,
   writer.SetFile( theFile, theVersion );
   this->exportMEDCommmon( writer, theMeshName, theAutoGroups, theMeshPart, theAutoDimension, theAddODOnVertices, theZTolerance, theSaveNumbers );
 }
+#endif
 
 //================================================================================
 /*!
