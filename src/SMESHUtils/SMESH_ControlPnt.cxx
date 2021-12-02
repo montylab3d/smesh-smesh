@@ -33,6 +33,7 @@
 #include <Poly_Triangle.hxx>
 #include <Poly_Triangulation.hxx>
 #include <Precision.hxx>
+#include <Standard_Version.hxx>
 #include <TColgp_Array1OfPnt.hxx>
 #include <TopExp_Explorer.hxx>
 #include <TopLoc_Location.hxx>
@@ -165,21 +166,23 @@ void SMESHUtils::createPointsSampleFromFace( const TopoDS_Face&       theFace,
 
   // Get triangles
   int nbTriangles = aTri->NbTriangles();
-  const Poly_Array1OfTriangle& triangles = aTri->Triangles();
+  auto triangles = [&aTri](Standard_Integer index) {
+    return aTri->Triangle(index);
+  };
 
   // GetNodes
-  int nbNodes = aTri->NbNodes();
-  TColgp_Array1OfPnt nodes(1,nbNodes);
-  nodes = aTri->Nodes();
+  auto nodes = [&aTri](Standard_Integer index) {
+    return aTri->Node(index);
+  };
 
   // Iterate on triangles and subdivide them
   thePoints.reserve( thePoints.size() + nbTriangles );
   for ( int i = 1; i <= nbTriangles; i++ )
   {
-    const Poly_Triangle& aTriangle = triangles.Value(i);
-    gp_Pnt p1 = nodes.Value(aTriangle.Value(1));
-    gp_Pnt p2 = nodes.Value(aTriangle.Value(2));
-    gp_Pnt p3 = nodes.Value(aTriangle.Value(3));
+    const Poly_Triangle& aTriangle = triangles(i);
+    gp_Pnt p1 = nodes(aTriangle.Value(1));
+    gp_Pnt p2 = nodes(aTriangle.Value(2));
+    gp_Pnt p3 = nodes(aTriangle.Value(3));
 
     p1.Transform(aTrsf);
     p2.Transform(aTrsf);
