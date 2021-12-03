@@ -181,7 +181,7 @@ install(FILES ${StdMeshers_INCLUDES} DESTINATION "include/smesh/StdMeshers")
 # SMESHUtils
 file(GLOB SMESHUtils_SRC ${SMESH_SRC_DIR}/SMESHUtils/*.cxx)
 add_library(SMESHUtils ${SMESHUtils_SRC})
-target_link_libraries(SMESHUtils SMDS TKShHealing TKPrim TKernel TKBRep TKG2d TKG3d TKGeomBase TKGeomAlgo TKTopAlgo TKMesh ${Boost_LIBRARIES})
+target_link_libraries(SMESHUtils Kernel SMDS TKShHealing TKPrim TKernel TKBRep TKG2d TKG3d TKGeomBase TKGeomAlgo TKTopAlgo TKMesh ${Boost_LIBRARIES})
 target_include_directories(SMESHUtils PUBLIC
   $<BUILD_INTERFACE:${SMESH_SRC_DIR}/SMESHUtils>
   $<INSTALL_INTERFACE:include/smesh/SMESHUtils>
@@ -203,7 +203,7 @@ file(GLOB NETGENPlugin_SRC_i ${NETGENPlugin_SRC_DIR}/*_i.cxx)
 list(REMOVE_ITEM NETGENPlugin_SRC ${NETGENPlugin_SRC_i})
 
 add_library(NETGENPlugin ${NETGENPlugin_SRC})
-target_link_libraries(NETGENPlugin StdMeshers nglib4smesh)
+target_link_libraries(NETGENPlugin StdMeshers nglib)
 target_include_directories(NETGENPlugin PUBLIC
   $<BUILD_INTERFACE:${NETGENPlugin_SRC_DIR}>
   $<INSTALL_INTERFACE:include/smesh/NETGENPlugin>)
